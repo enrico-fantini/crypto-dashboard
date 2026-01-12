@@ -170,17 +170,7 @@ export default function DashboardPage() {
             per iniziare!
           </p>
           <div className="text-sm text-yellow-700 space-y-2">
-            <p>
-              <strong>Opzione 1:</strong> Apri la console del browser (F12) e
-              incolla:
-            </p>
-            <code className="block bg-yellow-100 p-2 rounded text-xs mb-3">
-              {"import('./sample-data.js').then(m => m.insertSampleData())"}
-            </code>
-            <p>
-              <strong>Opzione 2:</strong> Inserisci manualmente i dati nella
-              dashboard Supabase
-            </p>
+            <p>Inserisci manualmente i dati nella dashboard Supabase</p>
           </div>
         </div>
       </div>

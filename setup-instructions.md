@@ -42,14 +42,6 @@ Le policies RLS assicurano che ogni utente possa vedere/modificare solo le propr
 
 2. **Registrati/Crea un account** usando l'interfaccia di autenticazione
 
-3. **Inserisci dati di esempio** aprendo la console del browser (F12) e incollando:
-
-   ```javascript
-   import("./sample-data.js").then((m) => m.insertSampleData());
-   ```
-
-   I dati verranno automaticamente associati al tuo account grazie all'autenticazione.
-
 ## Inserimento Manuale dei Dati
 
 Se preferisci inserire i dati manualmente nella dashboard Supabase:
