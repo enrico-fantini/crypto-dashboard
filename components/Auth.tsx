@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import Image from "next/image";
 
 interface AuthProps {
   onAuthSuccess?: () => void;
@@ -79,15 +80,22 @@ export function Auth({ onAuthSuccess }: AuthProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-linear-to-r from-blue-500 from-10% via-sky-500 via-30% to-emerald-500 to-90%">
       <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
+        <Image
+          src="/icon.png"
+          alt="FinTrack"
+          width={200}
+          height={200}
+          className="mx-auto my-8"
+        />
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-slate-900 mb-2">
-            Dashboard Finanziaria
+            Benvenuto in FinTrack
           </h1>
-          <p className="text-slate-600">
+          <h1 className="text-slate-700 text-lg font-medium">
             {isSignUp ? "Crea il tuo account" : "Accedi al tuo account"}
-          </p>
+          </h1>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-6">

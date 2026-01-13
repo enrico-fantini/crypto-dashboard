@@ -17,7 +17,8 @@ import {
   Wallet,
   LogOut,
   TrendingUp,
-} from "lucide-react"; // Icone moderne
+} from "lucide-react";
+import Image from "next/image";
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -182,12 +183,23 @@ export default function DashboardPage() {
         {/* Header */}
         <div className="flex-1 md:flex justify-between items-center">
           <div className="mb-3 md:mb-0">
-            <h1 className="text-2xl text-center md:text-left font-bold text-slate-900">
-              Dashboard Finanziaria
-            </h1>
-            <p className="text-slate-500 text-center md:text-left">
-              Bentornato, ecco il riepilogo delle tue finanze.
-            </p>
+            <div className="flex items-center gap-2">
+              <Image
+                src="/icon.png"
+                alt="FinTrack"
+                width={100}
+                height={100}
+                className="flex mx-auto my-3"
+              />
+              <div className="flex flex-col">
+                <h1 className="text-2xl text-center md:text-left font-bold text-slate-900">
+                  Dashboard Finanziaria
+                </h1>
+                <p className="text-slate-500 text-center md:text-left">
+                  Bentornato, ecco il riepilogo delle tue finanze.
+                </p>
+              </div>
+            </div>
           </div>
           <div className="flex items-center justify-center md:justify-end gap-3">
             <button
