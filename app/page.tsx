@@ -25,7 +25,7 @@ export default function DashboardPage() {
   const [authLoading, setAuthLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showAllTransactions, setShowAllTransactions] = useState(false);
-  const { transactions, isLoading, isError } = useTransactions();
+  const { transactions, isLoading } = useTransactions();
 
   useEffect(() => {
     // Controlla se l'utente è già autenticato
@@ -157,25 +157,13 @@ export default function DashboardPage() {
     );
   }
 
-  if (isLoading)
-    return <div className="p-8 text-center">Caricamento in corso...</div>;
-  if (isError)
+  if (isLoading) {
     return (
-      <div className="p-8 text-center max-w-md mx-auto">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-yellow-800 mb-2">
-            Nessuna transazione trovata
-          </h2>
-          <p className="text-yellow-700 mb-4">
-            Non hai ancora nessuna transazione. Aggiungi alcuni dati di esempio
-            per iniziare!
-          </p>
-          <div className="text-sm text-yellow-700 space-y-2">
-            <p>Inserisci manualmente i dati nella dashboard Supabase</p>
-          </div>
-        </div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
+  }
 
   return (
     <main className="md:min-h-screen bg-slate-50 p-4">

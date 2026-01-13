@@ -1,32 +1,29 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Legend,
-  Tooltip,
-} from "recharts";
+import { useMemo } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Transaction } from "@/types/Transactions";
-import { TooltipProps, LabelProps, COLORS } from "@/types/PieChart";
+import { COLORS } from "@/types/PieChart";
 
-// Custom tooltip con percentuale (fuori dal componente per evitare re-render)
-const CustomTooltip = ({
-  active,
-  payload,
-  total,
-}: TooltipProps & { total: number }) => {
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: { payload: { name: string; value: number } }[];
+  total: number;
+}
+
+const CustomTooltip = ({ active, payload, total }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
-    const data = payload[0];
+    const data = payload[0].payload;
     const percentage = ((data.value / total) * 100).toFixed(1);
     return (
-      <div className="bg-white p-3 rounded-lg shadow-lg border border-slate-200">
-        <p className="font-semibold text-slate-900">{data.name}</p>
-        <p className="text-sm text-slate-600">
-          €{data.value.toFixed(2)} ({percentage}%)
+      <div className="bg-white p-3 rounded-lg shadow-xl border border-slate-100 z-50">
+        <p className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+          {data.name}
         </p>
+        <p className="text-sm text-blue-600 font-mono mt-1">
+          €{data.value.toLocaleString("it-IT", { minimumFractionDigits: 2 })}
+        </p>
+        <p className="text-[10px] text-slate-400">{percentage}% del totale</p>
       </div>
     );
   }
@@ -38,10 +35,8 @@ export const CategoryPieChart = ({ data }: { data: Transaction[] }) => {
     const result = Object.entries(
       data.reduce((acc, transaction) => {
         const category = transaction.category || "Altro";
-        if (!acc[category]) {
-          acc[category] = 0;
-        }
-        acc[category] += transaction.amount;
+        if (!acc[category]) acc[category] = 0;
+        acc[category] += Math.abs(transaction.amount);
         return acc;
       }, {} as Record<string, number>)
     )
@@ -54,66 +49,84 @@ export const CategoryPieChart = ({ data }: { data: Transaction[] }) => {
     return result;
   }, [data]);
 
-  // Calcola il totale per la percentuale (prima dei return condizionali)
   const total = useMemo(
     () => chartData.reduce((sum, item) => sum + item.value, 0),
     [chartData]
   );
 
-  // Custom label con percentuale
-  const renderLabel = useCallback(
-    (entry: LabelProps) => {
-      const percentage = ((entry.value / total) * 100).toFixed(1);
-      return `${entry.name}: ${percentage}%`;
-    },
-    [total]
-  );
-
-  if (chartData.length === 0) {
-    return (
-      <div className="h-[300px] flex items-center justify-center border rounded-lg bg-white">
-        <p className="text-slate-500">Nessun dato disponibile</p>
-      </div>
-    );
-  }
+  if (chartData.length === 0) return null;
 
   return (
-    <div className="w-full max-h-[400px] p-6 bg-white rounded-xl shadow-sm border border-slate-100">
-      <h3 className="text-sm font-medium text-white">Entrate e Uscite</h3>
-      <ResponsiveContainer width="100%" height="100%" className="pb-6">
-        <PieChart>
-          <Pie
-            data={chartData}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            label={renderLabel}
-            outerRadius={80}
-            fill="#8884d8"
-            dataKey="value"
-          >
-            {chartData.map((_, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={COLORS[index % COLORS.length]}
-              />
-            ))}
-          </Pie>
-          <Tooltip content={<CustomTooltip total={total} />} />
-          <Legend
-            verticalAlign="bottom"
-            height={36}
-            formatter={(value) => {
-              const item = chartData.find((d) => d.name === value);
-              if (item) {
-                const percentage = ((item.value / total) * 100).toFixed(1);
-                return `${value} (${percentage}%)`;
-              }
-              return value;
-            }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
+    <div className="w-full bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+      <div className="flex flex-col lg:flex-row items-center lg:items-center">
+        <div className="w-full lg:w-3/5 h-[300px] sm:h-[350px] mb-4 relative">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                innerRadius="65%"
+                outerRadius="90%"
+                paddingAngle={4}
+                dataKey="value"
+                stroke="none"
+              >
+                {chartData.map((_, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                    className="hover:opacity-80 transition-opacity outline-none"
+                  />
+                ))}
+              </Pie>
+              <Tooltip content={<CustomTooltip total={total} />} />
+            </PieChart>
+          </ResponsiveContainer>
+
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span className="text-slate-400 text-xs font-medium">Totale</span>
+            <span className="text-xl font-bold text-slate-800">
+              €{total.toLocaleString("it-IT")}
+            </span>
+          </div>
+        </div>
+
+        <div className="w-full lg:w-2/5 flex flex-col gap-3 p-8 rounded-4xl shadow-lg border-2 border-slate-200">
+          <p className="text-[12px] font-medium text-slate-400 uppercase tracking-widest mb-2">
+            Legenda Spese
+          </p>
+          <div className="flex flex-col gap-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+            {chartData.map((entry, index) => {
+              const percentage = ((entry.value / total) * 100).toFixed(1);
+              return (
+                <div
+                  key={entry.name}
+                  className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className="w-3 h-3 rounded-full shrink-0 shadow-sm"
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                    <span className="text-sm font-semibold text-slate-700 truncate">
+                      {entry.name}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-end shrink-0">
+                    <span className="text-sm font-mono font-bold text-slate-900">
+                      {percentage}%
+                    </span>
+                    <span className="text-[10px] text-slate-400 italic">
+                      €{entry.value.toFixed(0)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
