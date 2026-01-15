@@ -168,7 +168,6 @@ export default function DashboardPage() {
   return (
     <main className="md:min-h-screen bg-slate-50 p-4">
       <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header */}
         <div className="flex-1 md:flex justify-between items-center">
           <div className="mb-3 md:mb-0">
             <div className="flex items-center gap-2">
@@ -207,7 +206,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Saldo Totale"
@@ -253,9 +251,7 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Main Content: Chart & Recent Transactions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Colonna Grafico (2/3 di spazio) */}
           <div className="lg:col-span-2 space-y-4">
             <h2 className="text-lg font-semibold text-slate-800">
               Andamento Temporale
@@ -263,7 +259,6 @@ export default function DashboardPage() {
             <BalanceChart data={transactions} />
           </div>
 
-          {/* Colonna Ultime Transazioni (1/3 di spazio) */}
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-slate-800">
               Ultime Attività
@@ -319,7 +314,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Grafici a Torta per Categorie */}
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-slate-800">
             Analisi entrate e uscite

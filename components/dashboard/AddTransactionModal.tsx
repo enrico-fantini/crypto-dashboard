@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useTransactions } from "@/hooks/useTransactions";
-
+import { Transaction } from "@/types/Transactions";
+import { supabase } from "@/lib/supabase";
 interface AddTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -17,12 +17,30 @@ export function AddTransactionModal({
     category: "",
     type: "expense" as "income" | "expense",
     description: "",
-    date: new Date().toISOString().split("T")[0], // Data odierna nel formato YYYY-MM-DD
+    date: new Date().toISOString().split("T")[0],
+    isRecurring: false,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { addTransaction } = useTransactions();
+  // Funzione interna per aggiungere la transazione (sostituisce il hook esterno per stabilità)
+  const performAddTransaction = async (
+    data: Omit<Transaction, "id" | "user_id">
+  ) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Utente non autenticato");
+
+    const { error } = await supabase.from("transactions").insert([
+      {
+        ...data,
+        user_id: user.id,
+      },
+    ]);
+
+    if (error) throw error;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,39 +48,73 @@ export function AddTransactionModal({
     setError(null);
 
     try {
-      // Validazione
       if (!formData.amount || !formData.category) {
         throw new Error("Importo e categoria sono obbligatori");
       }
 
       const amount = parseFloat(formData.amount);
       if (isNaN(amount) || amount <= 0) {
-        throw new Error("Importo deve essere un numero positivo");
+        throw new Error("L'importo deve essere un numero positivo");
       }
 
-      // Crea la transazione
-      await addTransaction({
-        amount,
-        category: formData.category,
-        type: formData.type,
-        description: formData.description || undefined,
-        date: new Date(formData.date).toISOString(),
-      });
+      const baseDate = new Date(formData.date);
 
-      // Reset form e chiudi modal
+      if (formData.isRecurring) {
+        // Logica Ricorrente: Crea 12 transazioni
+        const promises = [];
+
+        for (let i = 0; i < 12; i++) {
+          const recurringDate = new Date(baseDate);
+          recurringDate.setMonth(baseDate.getMonth() + i);
+
+          // Correzione overflow mesi (es. 31 marzo -> 30 aprile)
+          if (recurringDate.getDate() !== baseDate.getDate()) {
+            recurringDate.setDate(0);
+          }
+
+          promises.push(
+            performAddTransaction({
+              amount,
+              category: formData.category,
+              type: formData.type,
+              description:
+                i === 0
+                  ? formData.description
+                  : `${formData.description || ""} (Ricorrente ${
+                      i + 1
+                    }/12)`.trim(),
+              date: recurringDate.toISOString(),
+            })
+          );
+        }
+
+        await Promise.all(promises);
+      } else {
+        // Transazione Singola
+        await performAddTransaction({
+          amount,
+          category: formData.category,
+          type: formData.type,
+          description: formData.description || undefined,
+          date: baseDate.toISOString(),
+        });
+      }
+
+      // Reset form e chiusura
       setFormData({
         amount: "",
         category: "",
         type: "expense",
         description: "",
         date: new Date().toISOString().split("T")[0],
+        isRecurring: false,
       });
       onClose();
-    } catch (error: unknown) {
+
+      window.location.reload();
+    } catch (err: unknown) {
       const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Errore nell'aggiunta della transazione";
+        err instanceof Error ? err.message : "Errore sconosciuto";
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -74,129 +126,159 @@ export function AddTransactionModal({
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >
   ) => {
-    const { name, value } = e.target;
+    const target = e.target as HTMLInputElement;
+    const { name, value, type, checked } = target;
+
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-slate-200">
+        <div className="p-8">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-slate-900">
-              Aggiungi Transazione
+            <h2 className="text-2xl font-bold text-slate-900">
+              Nuova Operazione
             </h2>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-600 text-2xl"
+              className="text-slate-400 hover:text-slate-600 transition-colors text-3xl"
             >
-              ×
+              &times;
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Tipo *
-              </label>
-              <select
-                name="type"
-                value={formData.type}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 text-gray-800 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="flex bg-slate-100 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, type: "expense" })}
+                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+                  formData.type === "expense"
+                    ? "bg-white text-red-600 shadow-sm"
+                    : "text-slate-500"
+                }`}
               >
-                <option value="expense">Uscita</option>
-                <option value="income">Entrata</option>
-              </select>
+                Uscita
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, type: "income" })}
+                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+                  formData.type === "income"
+                    ? "bg-white text-green-600 shadow-sm"
+                    : "text-slate-500"
+                }`}
+              >
+                Entrata
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
+                  Importo (€)
+                </label>
+                <input
+                  type="number"
+                  name="amount"
+                  value={formData.amount}
+                  onChange={handleInputChange}
+                  step="0.01"
+                  placeholder="0.00"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-mono text-lg text-slate-900"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
+                  Data
+                </label>
+                <input
+                  type="date"
+                  name="date"
+                  value={formData.date}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900"
+                  required
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Importo (€) *
-              </label>
-              <input
-                type="number"
-                name="amount"
-                value={formData.amount}
-                onChange={handleInputChange}
-                step="0.01"
-                min="0.01"
-                placeholder="0.00"
-                className="w-full px-3 py-2 text-gray-800 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Categoria *
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
+                Categoria
               </label>
               <input
                 type="text"
                 name="category"
                 value={formData.category}
                 onChange={handleInputChange}
-                placeholder="es. Spesa, Stipendio, Trasporti..."
-                className="w-full px-3 py-2 text-gray-800 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="es. Affitto, Supermercato..."
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900"
                 required
               />
             </div>
 
+            <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
+              <input
+                type="checkbox"
+                id="isRecurring"
+                name="isRecurring"
+                checked={formData.isRecurring}
+                onChange={handleInputChange}
+                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <label
+                htmlFor="isRecurring"
+                className="text-sm font-semibold text-blue-900 cursor-pointer"
+              >
+                Ripeti ogni mese per un anno
+                <span className="block text-[10px] text-blue-600 font-normal uppercase mt-0.5">
+                  Verranno create 12 transazioni
+                </span>
+              </label>
+            </div>
+
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Descrizione (opzionale)
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
+                Note
               </label>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
-                placeholder="Dettagli aggiuntivi..."
-                rows={3}
-                className="w-full px-3 py-2 text-gray-800 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Data *
-              </label>
-              <input
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 text-gray-800 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
+                placeholder="Aggiungi una nota..."
+                rows={2}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none text-slate-900"
               />
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              <div className="text-red-600 text-xs font-bold bg-red-50 p-3 rounded-lg border border-red-100">
                 {error}
               </div>
             )}
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-3 pt-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
-                disabled={loading}
+                className="flex-1 px-4 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors"
               >
                 Annulla
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors"
+                className="flex-2 px-8 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 disabled:opacity-50 transition-all"
               >
-                {loading ? "Aggiunta..." : "Aggiungi"}
+                {loading ? "Caricamento..." : "Aggiungi"}
               </button>
             </div>
           </form>
