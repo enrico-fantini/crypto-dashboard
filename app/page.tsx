@@ -179,10 +179,10 @@ export default function DashboardPage() {
                 className="flex mx-auto my-3"
               />
               <div className="flex flex-col">
-                <h1 className="text-2xl text-center md:text-left font-bold text-slate-900">
+                <h1 className="text-2xl text-left font-bold text-slate-900">
                   Dashboard Finanziaria
                 </h1>
-                <p className="text-slate-500 text-center md:text-left">
+                <p className="text-slate-500 text-left">
                   Bentornato, ecco il riepilogo delle tue finanze.
                 </p>
               </div>
@@ -206,7 +206,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
           <StatCard
             title="Saldo Totale"
             value={`€${totalBalance.toFixed(2)}`}
